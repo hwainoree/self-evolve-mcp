@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: self-evolve-mcp
+  namespace: hwainoree
+spec:
+  replicas: 1
+  revisionHistoryLimit: 3
+  selector:
+    matchLabels:
+      app: self-evolve-mcp
+  template:
+    metadata:
+      labels:
+        app: self-evolve-mcp
+    spec:
+      nodeSelector:
+        kubernetes.io/arch: arm64
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      initContainers:
+        - name: fetch-binary
+          image: curlimages/curl@sha256:77fbb9f773fffafe4b1f3bf8a58cf104d0f401f3f297ed6204e70ac2cd1d7a40
+          command: [sh, -ec]
+          args:
+            - |
+              curl --fail --location --proto '=https' --tlsv1.2 --retry 3 --max-time 120 "$BINARY_URL" -o /runtime/self-evolve-mcp
+              printf '%s  %s\n' "$BINARY_SHA256" /runtime/self-evolve-mcp | sha256sum -c -
+              chmod 0555 /runtime/self-evolve-mcp
+          env:
+            - name: BINARY_URL
+              value: https://github.com/hwainoree/self-evolve-mcp/releases/download/v0.1.0/self-evolve-mcp-linux-aarch64
+            - name: BINARY_SHA256
+              value: a7d914a6be257fc2bb50185761711b119bb2e0ca098be7720661ebbc340229f1
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: 200m, memory: 64Mi}
+          volumeMounts:
+            - {name: runtime, mountPath: /runtime}
+      containers:
+        - name: server
+          image: debian@sha256:24a01011d10eba3a023bc8585b9650b8b29021240d4217c05b905e09ef4a5232
+          command: [/runtime/self-evolve-mcp]
+          env:
+            - {name: BIND_ADDR, value: '0.0.0.0:8080'}
+            - {name: ACCEPTED_ORIGIN, value: 'https://mcm.hn.yaaha.net'}
+          ports:
+            - {name: http, containerPort: 8080}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: [ALL]
+          resources:
+            requests: {cpu: 10m, memory: 16Mi}
+            limits: {cpu: '1', memory: 128Mi}
+          startupProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 2
+            failureThreshold: 30
+          readinessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /healthz, port: http}
+            periodSeconds: 10
+          volumeMounts:
+            - {name: runtime, mountPath: /runtime, readOnly: true}
+      volumes:
+        - name: runtime
+          emptyDir: {sizeLimit: 32Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: self-evolve-mcp
+  namespace: hwainoree
+spec:
+  selector: {app: self-evolve-mcp}
+  ports:
+    - {name: http, port: 80, targetPort: http}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: self-evolve-mcp
+  namespace: hwainoree
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls.certresolver: myresolver
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: mcm.hn.yaaha.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: self-evolve-mcp
+                port: {name: http}
+  tls:
+    - hosts: [mcm.hn.yaaha.net]

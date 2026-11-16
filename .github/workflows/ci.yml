@@ -1,0 +1,26 @@
+name: CI
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.100.0
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --all-targets --locked -j2 -- -D warnings
+      - run: cargo test --locked -j2
+      - run: cargo build --release --locked -j2
+      - run: python3 tests/smoke_binary.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: self-evolve-mcp-linux
+          path: target/release/self-evolve-mcp
+      - run: docker build -t self-evolve-mcp:ci .
