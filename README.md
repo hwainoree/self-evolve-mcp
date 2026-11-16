@@ -12,7 +12,7 @@ Despite the project name, there is **no self-modification, autonomous evolution,
 | `/healthz` | Liveness/readiness response: HTTP 200, body `ok` |
 | `/` | JSON service metadata advertising `/mcp` |
 
-The intended public MCP URL is `https://mcm.hn.yaaha.net/mcp`. This documents a target URL, **not a claim that a deployment is currently live**. TLS termination, ingress, authentication, and publication are external responsibilities. See [DEPLOYMENT.md](DEPLOYMENT.md) for the current checksum-pinned ARM64 release-binary bootstrap using a Debian trixie runtime while registry access is pending; the Dockerfile provides an alternative source-build path.
+The live public MCP URL is **https://mcm.hn.yaaha.net/mcp**, verified with trusted HTTPS, MCP initialization, tool discovery and an actual `marco` call returning `polo`. The base URL https://mcm.hn.yaaha.net advertises the endpoint. The deployed release is **v0.1.1**. See [DEPLOYMENT.md](DEPLOYMENT.md) for the current checksum-pinned ARM64 release-binary bootstrap using a Debian trixie runtime while registry access is pending; the Dockerfile provides an alternative source-build path.
 
 ## Build and run
 
@@ -59,6 +59,7 @@ The last response contains `"content":[{"type":"text","text":"polo"}]`. `tools/l
 
 ## Security and limits
 
+- Inbound MCP Host headers are restricted to the configured public origin hostname and loopback hosts; host validation is not disabled.
 - No authentication is implemented. `Origin` checks are not authentication: clients that omit `Origin` are permitted.
 - The configured origin and canonical loopback origins (`localhost`, `127.0.0.1`, `[::1]`) are accepted. Malformed, duplicate, or untrusted origins receive HTTP 403.
 - MCP request bodies are limited to 65,536 bytes (HTTP 413 above the limit).
@@ -88,6 +89,13 @@ python3 tests/smoke_binary.py
 Integration tests exercise real HTTP, MCP initialization/tool listing/calls, origin validation, body/concurrency/timeout limits, environment configuration, and clean SIGTERM/SIGINT shutdown. The release smoke test launches the actual binary and checks health plus the MCP lifecycle. CI additionally builds the container; it does not deploy or publish it.
 
 Add tools under `src/tools/`, register them with the SDK tool router, and add protocol-level integration tests before implementation. See [Adding tools](docs/ADDING_TOOLS.md) for the modular router-composition workflow.
+
+## Verification
+
+- 13 Rust tests pass; formatting and Clippy (`-D warnings`) pass.
+- Eight real public HTTPS MCP/security checks pass; 200 repeated HTTPS `marco` calls returned `polo`.
+- Independent source review passed. Runtime release download and in-pod SHA-256 verification passed.
+- [Measured performance and limits](docs/VERIFICATION.md); no universal throughput guarantee.
 
 ## License
 
