@@ -9,7 +9,7 @@ Canonical source: `/workspace/hwainoree/self-evolve-mcp`.
 
 Until a push-capable registry hostname/credentials and image builder are available, the manifest runs a **checksum-pinned released Rust binary**, not mounted source or a compiler:
 
-1. Build/review/test the release binary and upload it as `self-evolve-mcp-linux-aarch64` in the public GitHub release `v0.1.0`.
+1. Build/review/test the release binary and upload it as `self-evolve-mcp-linux-aarch64` in the public GitHub release `v0.1.1`.
 2. `k8s/deployment.yaml` pins an ARM64 curl image and downloads the exact release asset via HTTPS into an emptyDir. A recorded SHA-256 is checked before execute permission is added.
 3. A digest-pinned Debian trixie ARM64 runtime runs only that binary as UID 10001. No compiler, cargo install, source ConfigMaps or Kubernetes token in the workload.
 4. Service `self-evolve-mcp` exposes port 80 to 8080. Traefik routes the HTTPS hostname using the existing TLS resolver.

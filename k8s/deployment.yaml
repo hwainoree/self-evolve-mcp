@@ -35,9 +35,9 @@ spec:
               chmod 0555 /runtime/self-evolve-mcp
           env:
             - name: BINARY_URL
-              value: https://github.com/hwainoree/self-evolve-mcp/releases/download/v0.1.0/self-evolve-mcp-linux-aarch64
+              value: https://github.com/hwainoree/self-evolve-mcp/releases/download/v0.1.1/self-evolve-mcp-linux-aarch64
             - name: BINARY_SHA256
-              value: a7d914a6be257fc2bb50185761711b119bb2e0ca098be7720661ebbc340229f1
+              value: 645a365adf864eba00fa88dae509bba06068a936a1a9df627bced95f400e93b0
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
